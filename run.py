@@ -4,6 +4,8 @@ import keyboard
 nuitrack = py_nuitrack.Nuitrack()
 nuitrack.init()
 
+emulateKeyboard = True
+
 devices = nuitrack.get_device_list()
 for i, dev in enumerate(devices):
 	print(dev.get_name(), dev.get_serial_number())
@@ -21,41 +23,46 @@ nuitrack.run()
 def sortFunction(e):
 	return e.torso.real[2]
 
-def checkTorsoPosition(torso):
-	threshold = 200
-	if(torso["x"]>threshold):
+def checkLeaning(waist,neck):
+	threshold = 50
+	if(neck["x"]>(waist["x"]+threshold)):
 		return 1
-	if(torso["x"]<-threshold):
+	if(neck["x"]<(waist["x"]-threshold)):
 		return -1
 	return 0
 
-def checkHandPositions(left,right):
-	# print(left["y"])
-	threshold = 900
-	if(left["y"]>threshold or right["y"]>threshold):
+def checkHandPositions(torso,left,right):
+	threshold = 500
+	if(left["y"]>(torso["y"]+threshold) or right["y"]>(torso["y"]+threshold) ):
 		return 1
 	else:
 		return 0
 	
+def pressKey(key):
+	if(emulateKeyboard):
+		keyboard.press_and_release(key)
+
+
 while 1:
 	nuitrack.update()
 	data = nuitrack.get_skeleton()
 	data.skeletons.sort(key=sortFunction)
 	if(len(data.skeletons)>0):
 		skeleton = data.skeletons[0]
+		waist = {"x":skeleton.waist.real[0],"y":skeleton.waist.real[1],"z":skeleton.waist.real[2]}
 		torso = {"x":skeleton.torso.real[0],"y":skeleton.torso.real[1],"z":skeleton.torso.real[2]}
+		neck = {"x":skeleton.neck.real[0],"y":skeleton.neck.real[1],"z":skeleton.neck.real[2]}
 		right_hand = {"x":skeleton.right_hand.real[0],"y":skeleton.right_hand.real[1],"z":skeleton.right_hand.real[2]}
 		left_hand = {"x":skeleton.left_hand.real[0],"y":skeleton.left_hand.real[1],"z":skeleton.left_hand.real[2]}
 
-		if(checkHandPositions(left_hand,right_hand)==1):
+		if(checkHandPositions(torso,left_hand,right_hand)==1):
 			print("FIRE")
-			keyboard.press_and_release('space')
-		if(checkTorsoPosition(torso)==1):
+			pressKey("space")
+		if(checkLeaning(waist,neck)==1):
 			print("LEFT")
-			keyboard.press_and_release('left')
-		if(checkTorsoPosition(torso)==-1):
+			pressKey("left")
+		if(checkLeaning(waist,neck)==-1):
 			print("RIGHT")
-			keyboard.press_and_release('right')
-
+			pressKey("right")
 
 nuitrack.release()
